@@ -12,10 +12,12 @@ class TestConfig:
     """Test cases for the Config class."""
     
     def test_config_defaults(self):
-        """Test that configuration has proper defaults."""
+        """Test that default configuration values are set correctly."""
         config = Config()
-        
-        assert config.canvus_server_url == "http://localhost:3000"
+        assert str(config.canvus_server_url) == "http://localhost:3000/"
+        assert config.canvus_api_key is None
+        assert config.canvus_username is None
+        assert config.canvus_password is None
         assert config.ollama_server_url == "http://localhost:11434"
         assert config.ollama_model == "gemma3"
         assert config.log_level == "INFO"
@@ -74,19 +76,20 @@ class TestConfig:
     
     def test_config_serialization(self):
         """Test configuration serialization and deserialization."""
-        config = Config(
+        # Create a test configuration
+        test_config = Config(
             canvus_server_url="http://test:3000",
             canvus_api_key="test_key",
             ollama_model="test_model"
         )
         
-        # Test serialization
-        config_json = config.model_dump_json()
-        assert "test_key" in config_json
-        assert "test_model" in config_json
+        # Save configuration
+        test_config.save_config()
         
-        # Test deserialization
-        loaded_config = Config.model_validate_json(config_json)
-        assert loaded_config.canvus_server_url == "http://test:3000"
+        # Load configuration
+        loaded_config = Config.load_config()
+        
+        # Verify loaded configuration
+        assert str(loaded_config.canvus_server_url) == "http://test:3000/"
         assert loaded_config.canvus_api_key == "test_key"
         assert loaded_config.ollama_model == "test_model" 
