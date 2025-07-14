@@ -13,6 +13,7 @@ from loguru import logger
 
 from .config import Config
 from .exceptions import CanvusLLMException, ConfigurationError
+from .tray import CanvusTray
 
 
 class CanvusLLMInterface:
@@ -26,12 +27,13 @@ class CanvusLLMInterface:
     def __init__(self):
         """Initialize the application."""
         self.config: Optional[Config] = None
-        self.tray_icon = None
+        self.tray: Optional[CanvusTray] = None
         self.canvus_client = None
         self.ollama_client = None
         self.processing_queue = asyncio.Queue()
         self.active_subscriptions = {}
         self.is_running = False
+        self.status = "Idle"
         
         # Initialize logging
         self._setup_logging()
@@ -107,19 +109,56 @@ class CanvusLLMInterface:
         
         logger.info(f"Configuration validated - Auth method: {self.config.get_auth_method()}")
     
+    def get_status(self) -> str:
+        """Return a summary status for the tray."""
+        return self.status
+
     async def _initialize_system_tray(self) -> None:
         """Initialize the system tray interface."""
-        # TODO: Implement system tray initialization
-        logger.info("System tray initialization placeholder")
+        self.tray = CanvusTray(
+            on_restart=self.restart,
+            on_settings_change=self._handle_settings_change,
+            get_status=self.get_status
+        )
+        self.tray.start_tray()
+        logger.info("System tray initialized")
+
+    def set_tray_icon_state(self, state: str) -> None:
+        if self.tray:
+            self.tray.set_icon_state(state)
+
+    def set_tray_tooltip(self, text: str) -> None:
+        if self.tray:
+            self.tray.set_tooltip(text)
+
+    def update_status(self, status: str) -> None:
+        self.status = status
+        self.set_tray_tooltip(f"Canvus-Local-LLM: {status}")
+    
+    def _handle_settings_change(self, key: str, value: str) -> None:
+        """Handle settings changes from tray."""
+        if self.config:
+            setattr(self.config, f'canvus_{key}', value) if key in ['api_key', 'username', 'password'] else setattr(self.config, key, value)
+            self.config.save_config()
+            logger.info(f"Updated {key} in configuration")
+    
+    def _open_settings(self) -> None:
+        """Placeholder for opening settings."""
+        logger.info("Opening settings")
+        # TODO: Implement settings UI
     
     async def _initialize_clients(self) -> None:
         """Initialize API clients."""
+        self.update_status("Connecting to servers...")
         # TODO: Initialize Canvus client
         # TODO: Initialize Ollama client
+        self.set_tray_icon_state("connected")
+        self.update_status("Connected")
         logger.info("API clients initialization placeholder")
     
     async def _initialize_processing(self) -> None:
         """Initialize processing components."""
+        self.update_status("Ready")
         # TODO: Initialize processing queue
         # TODO: Initialize subscription managers
         logger.info("Processing components initialization placeholder")
@@ -129,6 +168,7 @@ class CanvusLLMInterface:
         try:
             await self.initialize()
             logger.info("Application started successfully")
+            self.update_status("Running")
             
             # Keep the application running
             while self.is_running:
@@ -175,14 +215,15 @@ class CanvusLLMInterface:
     
     async def _shutdown_system_tray(self) -> None:
         """Shutdown system tray interface."""
-        # TODO: Implement system tray shutdown
-        logger.info("System tray shutdown placeholder")
+        if self.tray:
+            self.tray.shutdown()
+        logger.info("System tray shutdown")
     
     def restart(self) -> None:
         """Restart the application."""
         logger.info("Restarting application")
-        # TODO: Implement restart logic
-        pass
+        # TODO: Implement proper restart logic
+        sys.exit(0)
 
 
 async def main():

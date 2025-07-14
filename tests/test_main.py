@@ -125,4 +125,4 @@ class TestCanvusLLMInterface:
                     await app._validate_configuration()
                     
                     assert app.connection_status["canvus"] is False
-                    assert app.connection_status["ollama"] is False 
+                    assert app.connection_status["ollama"] is False
